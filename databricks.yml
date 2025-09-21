@@ -1,0 +1,137 @@
+bundle:
+  name: nba-model-mlops
+
+workspace:
+  root_path: /Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+
+variables:
+  catalog:
+    description: "Unity Catalog catalog name"
+  schema:
+    description: "Schema/database name"
+  model_base:
+    description: "Base name for the model"
+  experiment_path:
+    description: "MLflow experiment path"
+
+resources:
+  experiments:
+    nba_experiment:
+      name: ${var.experiment_path}
+
+  # Model serving endpoint commented out - requires a deployed model first
+  # model_serving_endpoints:
+  #   nba_model_endpoint:
+  #     name: nba-model-${bundle.target}
+  #     config:
+  #       served_entities:
+  #         - entity_name: ${var.catalog}.${var.schema}.${var.model_base}
+  #           entity_version: 1  # Must be a number or omitted
+  #           workload_size: Small
+  #           scale_to_zero_enabled: true
+
+  jobs:
+    data_pipeline_job:
+      name: nba-data-pipeline-${bundle.target}
+      tasks:
+        - task_key: generate_data
+          notebook_task:
+            notebook_path: ./notebooks/01_data_generation.py
+            source: WORKSPACE
+          job_cluster_key: main_cluster
+        - task_key: engineer_features
+          depends_on:
+            - task_key: generate_data
+          notebook_task:
+            notebook_path: ./notebooks/02_feature_engineering.py
+            source: WORKSPACE
+          job_cluster_key: main_cluster
+      job_clusters:
+        - job_cluster_key: main_cluster
+          new_cluster:
+            spark_version: "17.0.x-cpu-ml-scala2.13"
+            node_type_id: "i3.2xlarge"
+            num_workers: 2
+            data_security_mode: SINGLE_USER
+
+    training_job:
+      name: nba-training-${bundle.target}
+      tasks:
+        - task_key: train_model
+          notebook_task:
+            notebook_path: ./notebooks/03_model_training.py
+            source: WORKSPACE
+          job_cluster_key: ml_cluster
+      job_clusters:
+        - job_cluster_key: ml_cluster
+          new_cluster:
+            spark_version: "17.0.x-cpu-ml-scala2.13"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+            data_security_mode: SINGLE_USER
+
+    inference_job:
+      name: nba-inference-${bundle.target}
+      tasks:
+        - task_key: batch_inference
+          notebook_task:
+            notebook_path: ./notebooks/04_batch_inference.py
+            source: WORKSPACE
+          job_cluster_key: inference_cluster
+      job_clusters:
+        - job_cluster_key: inference_cluster
+          new_cluster:
+            spark_version: "17.0.x-cpu-ml-scala2.13"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+            data_security_mode: SINGLE_USER
+      schedule:
+        quartz_cron_expression: "0 0 8 * * ?"  # Daily at 8 AM
+        timezone_id: "UTC"
+
+    monitoring_job:
+      name: nba-monitoring-${bundle.target}
+      tasks:
+        - task_key: model_monitoring
+          notebook_task:
+            notebook_path: ./notebooks/05_monitoring.py
+            source: WORKSPACE
+          job_cluster_key: monitoring_cluster
+      job_clusters:
+        - job_cluster_key: monitoring_cluster
+          new_cluster:
+            spark_version: "17.0.x-cpu-ml-scala2.13"
+            node_type_id: "i3.xlarge"
+            num_workers: 1
+            data_security_mode: SINGLE_USER
+      schedule:
+        quartz_cron_expression: "0 0 9 * * ?"  # Daily at 9 AM
+        timezone_id: "UTC"
+
+targets:
+  dev:
+    variables:
+      catalog: "juan_dev"
+      schema: "ml_nba_demo_dev"
+      model_base: "nba_model"
+      experiment_path: "/Users/juan.lamadrid@databricks.com/experiments/nba-model-dev"
+
+  staging:
+    variables:
+      catalog: "juan_dev"
+      schema: "ml_nba_demo_staging"
+      model_base: "nba_model"
+      experiment_path: "/Users/juan.lamadrid@databricks.com/experiments/nba-model-staging"
+
+  prod:
+    variables:
+      catalog: "prod"
+      schema: "ml_nba_demo"
+      model_base: "nba_model"
+      experiment_path: "/Shared/experiments/nba-model-prod"
+    resources:
+      jobs:
+        data_pipeline_job:
+          schedule:
+            quartz_cron_expression: "0 0 2 * * ?"  # Daily at 2 AM in prod
+            timezone_id: "UTC"
