@@ -1,6 +1,8 @@
 # validate-bundle
 
-Validates Databricks Asset Bundle configuration and checks for common ML project issues.
+**Self-contained bundle validation command - executes independently without additional tools**
+
+Validates Databricks Asset Bundle configuration and checks for common ML project issues. This command performs all file system checks, YAML parsing, and bundle validation internally.
 
 ## Usage
 
@@ -18,7 +20,9 @@ Validates Databricks Asset Bundle configuration and checks for common ML project
 
 ## Description
 
-This command performs comprehensive validation of your Databricks Asset Bundle ML project:
+**⚠️ IMPORTANT: This is a self-contained command that requires no additional Claude actions or tool calls.**
+
+This command performs comprehensive validation of your Databricks Asset Bundle ML project. All file system operations, configuration parsing, and validation logic are handled internally by the Python script:
 
 ### 🔧 **Bundle Configuration**
 - Validates `databricks.yml` syntax and schema
