@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 from pyspark.sql import SparkSession
+
 from ..config import ModelConfig
 
 
@@ -22,24 +23,21 @@ class DataGenerator:
 
         # Demographics
         age = np.random.randint(18, 71, size=n_customers)
-        gender = np.random.choice(['M', 'F'], size=n_customers, p=[0.48, 0.52])
+        gender = np.random.choice(["M", "F"], size=n_customers, p=[0.48, 0.52])
         region = np.random.choice(
-            ['Northeast', 'Midwest', 'South', 'West'],
-            size=n_customers,
-            p=[0.20, 0.23, 0.35, 0.22]
+            ["Northeast", "Midwest", "South", "West"], size=n_customers, p=[0.20, 0.23, 0.35, 0.22]
         )
         income = np.random.normal(80_000, 25_000, size=n_customers).clip(20_000, 250_000)
 
         # Transactions (last month)
         num_purchases_last_month = np.random.poisson(lam=2.2, size=n_customers)
-        purchase_amount_last_month = (
-            np.random.gamma(shape=2.0, scale=120.0, size=n_customers) *
-            (1 + (income / 250_000))
+        purchase_amount_last_month = np.random.gamma(shape=2.0, scale=120.0, size=n_customers) * (
+            1 + (income / 250_000)
         )
 
         # Browsing (last week)
         browsing_minutes_last_week = np.random.gamma(shape=2.2, scale=25.0, size=n_customers)
-        categories = ['Beauty', 'Electronics', 'Fashion', 'Home', 'Grocery', 'Sports', 'Toys']
+        categories = ["Beauty", "Electronics", "Fashion", "Home", "Grocery", "Sports", "Toys"]
         top_category = np.random.choice(categories, size=n_customers)
 
         # Ground-truth NEXT BEST ACTION (rule-based for education)
@@ -48,18 +46,20 @@ class DataGenerator:
         )
 
         # Create DataFrame
-        raw_pdf = pd.DataFrame({
-            "customer_id": customer_id,
-            "age": age,
-            "gender": gender,
-            "region": region,
-            "income": income.round(2),
-            "num_purchases_last_month": num_purchases_last_month,
-            "purchase_amount_last_month": purchase_amount_last_month.round(2),
-            "browsing_minutes_last_week": browsing_minutes_last_week.round(2),
-            "top_category": top_category,
-            "best_action": best_action
-        })
+        raw_pdf = pd.DataFrame(
+            {
+                "customer_id": customer_id,
+                "age": age,
+                "gender": gender,
+                "region": region,
+                "income": income.round(2),
+                "num_purchases_last_month": num_purchases_last_month,
+                "purchase_amount_last_month": purchase_amount_last_month.round(2),
+                "browsing_minutes_last_week": browsing_minutes_last_week.round(2),
+                "top_category": top_category,
+                "best_action": best_action,
+            }
+        )
 
         # Save to Delta table
         raw_sdf = self.spark.createDataFrame(raw_pdf)

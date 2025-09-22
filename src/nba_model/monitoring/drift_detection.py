@@ -1,6 +1,8 @@
 """Model monitoring and drift detection for NBA model."""
 
-from pyspark.sql import SparkSession, functions as F
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+
 from ..config import ModelConfig
 
 
@@ -16,8 +18,7 @@ class ModelMonitor:
         log_table = self.spark.table(self.config.log_table_full)
 
         action_dist = (
-            log_table
-            .groupBy("log_date", "recommended_action")
+            log_table.groupBy("log_date", "recommended_action")
             .count()
             .orderBy("log_date", "recommended_action")
         )
@@ -31,8 +32,8 @@ class ModelMonitor:
 
         # Get available dates
         dates = [
-            r["log_date"] for r in
-            log_tbl.select("log_date").distinct().orderBy("log_date").collect()
+            r["log_date"]
+            for r in log_tbl.select("log_date").distinct().orderBy("log_date").collect()
         ]
 
         if len(dates) < 2:
@@ -58,8 +59,7 @@ class ModelMonitor:
 
         # Create drift summary
         drift_df = self.spark.createDataFrame(
-            drift_rows,
-            ["feature", "baseline_mean", "current_mean", "delta", "pct_change"]
+            drift_rows, ["feature", "baseline_mean", "current_mean", "delta", "pct_change"]
         )
 
         print("Feature drift analysis:")
@@ -77,8 +77,7 @@ class ModelMonitor:
         """Calculate feature means for a specific date."""
         filtered_data = log_tbl.filter(F.col("log_date") == date_filter)
         means = (
-            filtered_data
-            .select([F.mean(c).alias(c) for c in self.config.numeric_features])
+            filtered_data.select([F.mean(c).alias(c) for c in self.config.numeric_features])
             .collect()[0]
             .asDict()
         )
@@ -93,28 +92,21 @@ class ModelMonitor:
         unique_customers = log_table.select("customer_id").distinct().count()
 
         # Action distribution
-        action_counts = (
-            log_table
-            .groupBy("recommended_action")
-            .count()
-            .collect()
-        )
+        action_counts = log_table.groupBy("recommended_action").count().collect()
 
         action_distribution = {row["recommended_action"]: row["count"] for row in action_counts}
 
         # Recent activity
-        recent_predictions = (
-            log_table
-            .filter(F.col("log_date") >= F.date_sub(F.current_date(), 7))
-            .count()
-        )
+        recent_predictions = log_table.filter(
+            F.col("log_date") >= F.date_sub(F.current_date(), 7)
+        ).count()
 
         report = {
             "total_predictions": total_predictions,
             "unique_customers": unique_customers,
             "action_distribution": action_distribution,
             "recent_predictions_7d": recent_predictions,
-            "monitoring_date": F.current_timestamp()
+            "monitoring_date": F.current_timestamp(),
         }
 
         print("Model Performance Report:")
@@ -143,7 +135,9 @@ class ModelMonitor:
         # Check for duplicate customer IDs
         total_rows = features_table.count()
         unique_customers = features_table.select("customer_id").distinct().count()
-        duplicate_rate = ((total_rows - unique_customers) / total_rows) * 100 if total_rows > 0 else 0
+        duplicate_rate = (
+            ((total_rows - unique_customers) / total_rows) * 100 if total_rows > 0 else 0
+        )
 
         quality_metrics["duplicate_customer_rate"] = duplicate_rate
 

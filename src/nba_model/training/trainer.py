@@ -1,15 +1,17 @@
 """Model training pipeline for NBA model."""
 
+import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
+import pandas as pd
+from databricks.feature_store import FeatureLookup
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from pyspark.sql import SparkSession, functions as F
-from databricks.feature_store import FeatureLookup
+from sklearn.model_selection import train_test_split
+
 from ..config import ModelConfig
 
 
@@ -28,34 +30,42 @@ class ModelTrainer:
         labels_sdf = raw.select(
             "customer_id",
             F.when(F.col("best_action") == "Email", 0)
-             .when(F.col("best_action") == "SMS", 1)
-             .otherwise(2).alias("action_label"),
-            "best_action"
+            .when(F.col("best_action") == "SMS", 1)
+            .otherwise(2)
+            .alias("action_label"),
+            "best_action",
         )
 
         # Get training data with features
         if fs_mode == "feature_store":
             from databricks.feature_store import FeatureStoreClient
+
             fs = FeatureStoreClient()
 
             feature_lookups = [
                 FeatureLookup(
                     table_name=self.config.feature_table_full,
                     feature_names=self.config.numeric_features + self.config.categorical_features,
-                    lookup_key="customer_id"
+                    lookup_key="customer_id",
                 )
             ]
             training_set = fs.create_training_set(
-                df=labels_sdf,
-                feature_lookups=feature_lookups,
-                label="action_label"
+                df=labels_sdf, feature_lookups=feature_lookups, label="action_label"
             )
             train_sdf = training_set.load_df()
         else:
             # Delta-only mode
             feats = self.spark.table(self.config.feature_table_full)
-            train_sdf = labels_sdf.alias("l").join(feats.alias("f"), on="customer_id") \
-                .select("l.action_label", *self.config.numeric_features, *self.config.categorical_features, "f.customer_id")
+            train_sdf = (
+                labels_sdf.alias("l")
+                .join(feats.alias("f"), on="customer_id")
+                .select(
+                    "l.action_label",
+                    *self.config.numeric_features,
+                    *self.config.categorical_features,
+                    "f.customer_id",
+                )
+            )
 
         # Convert to pandas and prepare design matrix
         train_pdf = train_sdf.toPandas()
@@ -110,7 +120,7 @@ class ModelTrainer:
             mlflow.sklearn.log_model(
                 sk_model=model,
                 name="model",
-                signature=mlflow.models.infer_signature(X_train, model.predict(X_train))
+                signature=mlflow.models.infer_signature(X_train, model.predict(X_train)),
             )
 
             run_id = run.info.run_id
@@ -125,7 +135,7 @@ class ModelTrainer:
         """Create and log confusion matrix visualization."""
         cm = confusion_matrix(y_test, y_pred, labels=[0, 1, 2])
         plt.figure(figsize=(4, 4))
-        plt.imshow(cm, interpolation='nearest')
+        plt.imshow(cm, interpolation="nearest")
         plt.title("Confusion Matrix (0=Email, 1=SMS, 2=Push)")
         plt.colorbar()
 
@@ -137,8 +147,13 @@ class ModelTrainer:
         thresh = cm.max() / 2.0
         for i in range(cm.shape[0]):
             for j in range(cm.shape[1]):
-                plt.text(j, i, f"{cm[i, j]:d}", ha="center",
-                        color="white" if cm[i, j] > thresh else "black")
+                plt.text(
+                    j,
+                    i,
+                    f"{cm[i, j]:d}",
+                    ha="center",
+                    color="white" if cm[i, j] > thresh else "black",
+                )
 
         plt.ylabel("True")
         plt.xlabel("Pred")
@@ -198,7 +213,9 @@ class ModelTrainer:
                 print(f"Promoted new champion: v{new_version} (prev: v{champ_v})")
             else:
                 client.set_registered_model_alias(model_name, "challenger", str(new_version))
-                print(f"Set challenger: v{new_version} (acc={test_accuracy:.4f} < champ={champ_acc:.4f})")
+                print(
+                    f"Set challenger: v{new_version} (acc={test_accuracy:.4f} < champ={champ_acc:.4f})"
+                )
 
     def get_train_columns(self) -> list:
         """Get the training column order for inference alignment."""

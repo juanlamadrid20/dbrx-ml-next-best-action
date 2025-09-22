@@ -30,16 +30,21 @@ class ModelConfig:
         """Initialize derived properties and default values."""
         if self.numeric_features is None:
             self.numeric_features = [
-                "age", "gender_ix", "income",
-                "num_purchases_last_month", "purchase_amount_last_month", "avg_purchase_value",
-                "browsing_minutes_last_week", "is_high_spender"
+                "age",
+                "gender_ix",
+                "income",
+                "num_purchases_last_month",
+                "purchase_amount_last_month",
+                "avg_purchase_value",
+                "browsing_minutes_last_week",
+                "is_high_spender",
             ]
 
         if self.categorical_features is None:
             self.categorical_features = ["region", "top_category", "age_bucket"]
 
         if self.experiment_path is None:
-            self.experiment_path = f"/Users/juan.lamadrid@databricks.com/experiments/nba-model"
+            self.experiment_path = "/Users/juan.lamadrid@databricks.com/experiments/nba-model"
 
     @property
     def feature_table_full(self) -> str:
