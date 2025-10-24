@@ -49,8 +49,11 @@ class FeatureEngineer:
             )
         )
 
-        # Save engineered features
-        features_sdf.write.mode("overwrite").format("delta").saveAsTable(
+        # Add timestamp for monitoring
+        final_features = features_sdf.withColumn("updated_at", F.current_timestamp())
+
+        # Save engineered features with schema evolution enabled
+        final_features.write.mode("overwrite").option("overwriteSchema", "true").format("delta").saveAsTable(
             self.config.feature_table_full
         )
         print(f"Created features table: {self.config.feature_table_full}")
@@ -106,10 +109,11 @@ class FeatureEngineer:
             except Exception as e:
                 print(f"Feature Store table may already exist: {e}")
 
-            # Write to Feature Store
+            # Write to Feature Store (exclude updated_at for Feature Store compatibility)
+            feature_store_df = self.spark.table(self.config.feature_table_full).drop("updated_at")
             fs.write_table(
                 name=self.config.feature_table_full,
-                df=self.spark.table(self.config.feature_table_full),
+                df=feature_store_df,
                 mode="overwrite",
             )
             fs_mode = "feature_store"

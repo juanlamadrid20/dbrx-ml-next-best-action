@@ -24,6 +24,12 @@ class BatchInference:
         X_infer = self._prepare_inference_matrix(features_df, train_columns)
 
         # Load model and predict
+        import mlflow
+        from mlflow.tracking import MlflowClient
+
+        client = MlflowClient()
+        model_version = client.get_model_version_by_alias(self.config.uc_model_name, "champion").version
+
         loaded_model = mlflow.pyfunc.load_model(f"models:/{self.config.uc_model_name}@champion")
         pred_int = loaded_model.predict(X_infer)
 
@@ -66,6 +72,16 @@ class BatchInference:
 
     def create_inference_log(self) -> None:
         """Create inference log joining predictions with features."""
+        import mlflow
+        from mlflow.tracking import MlflowClient
+
+        # Get current model version for logging
+        client = MlflowClient()
+        try:
+            model_version = client.get_model_version_by_alias(self.config.uc_model_name, "champion").version
+        except:
+            model_version = "unknown"
+
         preds = self.spark.table(self.config.rec_table_full)
         feats = self.spark.table(self.config.feature_table_full).select(
             "customer_id", *self.config.numeric_features, *self.config.categorical_features
@@ -75,9 +91,11 @@ class BatchInference:
             preds.alias("p")
             .join(feats.alias("f"), on="customer_id", how="left")
             .withColumn("log_date", F.current_date())
+            .withColumn("model_version", F.lit(model_version))
+            .withColumn("inference_timestamp", F.current_timestamp())
         )
 
-        log_df.write.mode("append").format("delta").saveAsTable(self.config.log_table_full)
+        log_df.write.mode("append").option("mergeSchema", "true").format("delta").saveAsTable(self.config.log_table_full)
         print(f"Created inference log in {self.config.log_table_full}")
 
     def predict_single(self, customer_features: dict, train_columns: list) -> str:

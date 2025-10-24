@@ -1,9 +1,6 @@
 bundle:
   name: nba-model-mlops
 
-workspace:
-  root_path: /Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
-
 variables:
   catalog:
     description: "Unity Catalog catalog name"
@@ -110,18 +107,24 @@ resources:
 
 targets:
   dev:
+    mode: development
+    default: true
     variables:
       catalog: "juan_dev"
       schema: "ml_nba_demo_dev"
       model_base: "nba_model"
-      experiment_path: "/Users/juan.lamadrid@databricks.com/experiments/nba-model-dev"
+      experiment_path: "/Users/${workspace.current_user.userName}/ml/experiments/nba-model-dev"
+    workspace:
+      host: https://e2-demo-field-eng.cloud.databricks.com
+      # root_path: /Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Users/${workspace.current_user.userName}/ml/dbrx-ml-next-best-action
 
   staging:
     variables:
       catalog: "juan_dev"
       schema: "ml_nba_demo_staging"
       model_base: "nba_model"
-      experiment_path: "/Users/juan.lamadrid@databricks.com/experiments/nba-model-staging"
+      experiment_path: "/Users/${workspace.current_user.userName}/experiments/nba-model-staging"
 
   prod:
     variables:

@@ -58,6 +58,9 @@ dbb run monitoring_job -t dev
 
 # Promote models between aliases safely
 /promote-model catalog.schema.model [--from=staging] [--to=champion] [--dry-run]
+
+# Setup Lakehouse Monitoring (run once per environment)
+# Uncomment and run the monitoring setup cell in notebooks/05_monitoring.py
 ```
 
 ## Project Architecture
@@ -95,7 +98,8 @@ Workflow: Modify pyproject.toml → Run `./sync_requirements.sh` → Commit both
 - **Feature Store**: Databricks Feature Store with Delta table fallback
 - **MLflow**: Experiment tracking, model versioning, Unity Catalog registry
 - **Asset Bundle**: Multi-environment deployment with scheduled jobs
-- **Monitoring**: Data drift detection and performance monitoring
+- **Lakehouse Monitoring**: Automated drift detection, data quality monitoring, and inference analytics
+- **Monitoring**: Enhanced schema with timestamps and model versioning for comprehensive observability
 
 ### Job Dependencies
 Jobs are designed to run in sequence:
