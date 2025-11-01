@@ -10,7 +10,7 @@ class ModelConfig:
 
     # Environment configuration
     catalog: str = "juan_dev"
-    schema: str = "ml_nba_demo"
+    schema: str = "ml"
 
     # Table names
     feature_table: str = "nba_customer_features"

@@ -35,7 +35,6 @@ resources:
           notebook_task:
             notebook_path: ./notebooks/01_data_generation.py
             source: WORKSPACE
-          job_cluster_key: main_cluster
         - task_key: engineer_features
           depends_on:
             - task_key: generate_data
@@ -111,25 +110,18 @@ targets:
     default: true
     variables:
       catalog: "juan_dev"
-      schema: "ml_nba_demo_dev"
+      schema: "ml"
       model_base: "nba_model"
-      experiment_path: "/Users/${workspace.current_user.userName}/ml/experiments/nba-model-dev"
+      experiment_path: "/Users/${workspace.current_user.userName}/ml/experiments/dbrx-ml-next-best-action"
     workspace:
       host: https://e2-demo-field-eng.cloud.databricks.com
       # root_path: /Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
       root_path: /Users/${workspace.current_user.userName}/ml/dbrx-ml-next-best-action
 
-  staging:
-    variables:
-      catalog: "juan_dev"
-      schema: "ml_nba_demo_staging"
-      model_base: "nba_model"
-      experiment_path: "/Users/${workspace.current_user.userName}/experiments/nba-model-staging"
-
   prod:
     variables:
       catalog: "prod"
-      schema: "ml_nba_demo"
+      schema: "ml"
       model_base: "nba_model"
       experiment_path: "/Shared/experiments/nba-model-prod"
     resources:
